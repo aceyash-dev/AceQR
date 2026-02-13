@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#5865F2">
+<title>AceQR</title>
+
+<link rel="manifest" href="manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;800&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+
+<style>
+:root{
+  --blurple:#5865F2;
+  --glass:rgba(255,255,255,.08);
+  --border:rgba(255,255,255,.2);
+}
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Montserrat',sans-serif;}
+body{
+  min-height:100vh;
+  background:linear-gradient(135deg,#5865F2,#3b45c9,#7983FF);
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;
+}
+.container{
+  width:95%;max-width:560px;
+  backdrop-filter:blur(25px);
+  background:var(--glass);
+  border:1px solid var(--border);
+  border-radius:30px;
+  padding:40px;text-align:center;color:white;
+  box-shadow:0 10px 60px rgba(0,0,0,.25);
+  animation:fadeUp .8s ease;
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:none}}
+h1{font-size:30px;font-weight:800;margin-bottom:6px;}
+.subtitle{font-size:13px;opacity:.8;margin-bottom:20px;}
+input,select{
+  width:100%;padding:13px;border-radius:14px;border:none;
+  margin-bottom:12px;background:rgba(255,255,255,.15);color:white;
+}
+button{
+  width:100%;padding:14px;border-radius:14px;border:none;
+  font-weight:600;cursor:pointer;margin-bottom:10px;
+  transition:.3s ease;
+}
+.primary{background:white;color:var(--blurple);}
+.primary:hover{background:#7983FF;color:white;}
+.secondary{background:transparent;border:1px solid white;color:white;}
+
+.palette{
+  display:flex;flex-wrap:wrap;gap:8px;margin-bottom:15px;justify-content:center;
+}
+.palette div{
+  width:26px;height:26px;border-radius:50%;
+  cursor:pointer;border:2px solid white;
+}
+
+#qrWrap{
+  margin-top:25px;display:inline-block;
+  background:white;padding:15px;border-radius:25px;
+  transform:scale(.8);opacity:0;transition:.5s ease;
+}
+#qrWrap.show{transform:scale(1);opacity:1;}
+
+canvas{border-radius:18px;}
+footer{margin-top:18px;font-size:12px;opacity:.7;}
+</style>
+</head>
+
+<body>
+<div class="container">
+  <h1>AceQR</h1>
+  <div class="subtitle">Solid QR • Advanced Types • Rounded Modules</div>
+
+  <select id="qrType">
+    <option value="text">Text / URL</option>
+    <option value="wifi">WiFi</option>
+    <option value="sms">SMS</option>
+    <option value="vcard">vCard</option>
+  </select>
+
+  <div id="dynamicInputs">
+    <input type="text" id="mainInput" placeholder="Enter text or URL">
+  </div>
+
+  <input type="text" id="hexInput" placeholder="#5865F2 (HEX supported)">
+  
+  <div class="palette">
+    <div style="background:#5865F2" onclick="setColor('#5865F2')"></div>
+    <div style="background:#000000" onclick="setColor('#000000')"></div>
+    <div style="background:#ff4d4d" onclick="setColor('#ff4d4d')"></div>
+    <div style="background:#00c853" onclick="setColor('#00c853')"></div>
+    <div style="background:#ff9100" onclick="setColor('#ff9100')"></div>
+    <div style="background:#2962ff" onclick="setColor('#2962ff')"></div>
+    <div style="background:#9c27b0" onclick="setColor('#9c27b0')"></div>
+    <div style="background:#00bcd4" onclick="setColor('#00bcd4')"></div>
+  </div>
+
+  <button class="primary" onclick="generateQR()">Generate QR</button>
+  <button class="secondary" onclick="downloadPNG()">Download PNG</button>
+  <button class="secondary" id="installBtn" style="display:none;">Install App</button>
+
+  <div id="qrWrap"><canvas id="qrCanvas"></canvas></div>
+
+  <footer>Installable • Rounded Pixel Style • Offline Ready</footer>
+</div>
+
+<script>
+let qr;
+
+function setColor(color){
+  document.getElementById("hexInput").value=color;
+}
+
+document.getElementById("qrType").addEventListener("change",updateInputs);
+
+function updateInputs(){
+  const type=document.getElementById("qrType").value;
+  const wrap=document.getElementById("dynamicInputs");
+  wrap.innerHTML="";
+  if(type==="wifi"){
+    wrap.innerHTML=`
+      <input placeholder="SSID" id="ssid">
+      <input placeholder="Password" id="pass">
+    `;
+  }
+  else if(type==="sms"){
+    wrap.innerHTML=`
+      <input placeholder="Phone Number" id="phone">
+      <input placeholder="Message" id="msg">
+    `;
+  }
+  else if(type==="vcard"){
+    wrap.innerHTML=`
+      <input placeholder="Full Name" id="name">
+      <input placeholder="Phone" id="phone">
+      <input placeholder="Email" id="email">
+    `;
+  }
+  else{
+    wrap.innerHTML=`<input placeholder="Enter text or URL" id="mainInput">`;
+  }
+}
+
+function buildQRData(){
+  const type=document.getElementById("qrType").value;
+  if(type==="wifi"){
+    return `WIFI:T:WPA;S:${ssid.value};P:${pass.value};;`;
+  }
+  if(type==="sms"){
+    return `SMSTO:${phone.value}:${msg.value}`;
+  }
+  if(type==="vcard"){
+    return `BEGIN:VCARD
+VERSION:3.0
+FN:${name.value}
+TEL:${phone.value}
+EMAIL:${email.value}
+END:VCARD`;
+  }
+  return document.getElementById("mainInput").value;
+}
+
+function generateQR(){
+  const color=document.getElementById("hexInput").value || "#000000";
+  const text=buildQRData();
+  if(!text.trim()){alert("Fill required fields.");return;}
+
+  qr=new QRious({
+    element:document.getElementById("qrCanvas"),
+    value:text,
+    size:260,
+    foreground:color,
+    background:"white",
+    level:"H"
+  });
+
+  roundPixels();
+  document.getElementById("qrWrap").classList.add("show");
+}
+
+function roundPixels(){
+  const canvas=document.getElementById("qrCanvas");
+  const ctx=canvas.getContext("2d");
+  const imgData=ctx.getImageData(0,0,canvas.width,canvas.height);
+  const data=imgData.data;
+
+  for(let y=0;y<canvas.height;y+=4){
+    for(let x=0;x<canvas.width;x+=4){
+      const index=(y*canvas.width+x)*4;
+      if(data[index]===0){
+        ctx.clearRect(x,y,4,4);
+        ctx.beginPath();
+        ctx.arc(x+2,y+2,2,0,Math.PI*2);
+        ctx.fillStyle=document.getElementById("hexInput").value || "#000";
+        ctx.fill();
+      }
+    }
+  }
+}
+
+function downloadPNG(){
+  const link=document.createElement("a");
+  link.download="AceQR.png";
+  link.href=document.getElementById("qrCanvas").toDataURL();
+  link.click();
+}
+
+/* PWA install */
+let deferredPrompt;
+window.addEventListener("beforeinstallprompt",e=>{
+  e.preventDefault();
+  deferredPrompt=e;
+  document.getElementById("installBtn").style.display="block";
+});
+document.getElementById("installBtn").addEventListener("click",()=>{
+  deferredPrompt.prompt();
+});
+
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("sw.js");
+}
+</script>
+</body>
+</html>
